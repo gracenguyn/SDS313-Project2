@@ -1,0 +1,159 @@
+---
+title: "Project2"
+author: "Grace Nguyen"
+date: "2022-11-14"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 1000)
+library(ggplot2)
+library(tidyverse)
+library(lubridate)
+library(htmlwidgets)
+spending <- read.csv("construction_spending.csv")
+```
+
+## **1. Introduction**
+
+![(Image Courtesy of the Blanton Museum)](blanton.jpeg)
+
+Pictured above is a digital rendering of UT's own Blanton Museum, or at least what it's supposed to look like in the near future. As the city of Austin and University revitalize their facilities to match the pace of the city's robust growth and evolve alongside UT's student population, student encounters with construction at and around UT are not only inevitable, but also a part of daily life. 
+
+In this report we will analyze the apportionment of combined public and private construction spending to various sectors. To do so, we will utilize the [Construction Spending Dataset](https://corgis-edu.github.io/corgis/csv/construction_spending/) from the [CORGIS Dataset Project](https://corgis-edu.github.io/corgis//). The data was collected from the Value of Construction Put in Place Survey, a monthly survey which began in 1964. This dataset only contains data from January 2002 to January 2016. The survey provides monthly estimates of the total dollar value of construction work done in the U.S., covering construction work done each month on new structures or improvements to existing structures for private and public sectors. Data estimates include the cost of labor and materials, cost of architectural and engineering work, overhead costs, interest and taxes paid during construction, and contractor’s profits. Data collection begins on the first day after the reference month and continues for about three weeks.
+
+## **2. Data Preparation**
+
+``` {r echo = FALSE}
+spending <- select(spending, -time.index, -time.month.name, -time.period) #extraneous variables
+spending <- unite(spending, col="year_month", c("time.month", "time.year"), sep="-") #consolidate/reshape
+spending$year_month <- my(spending$year_month) #parse date
+```
+
+After importing the raw CSV file, I removed extraneous variables and consolidated the multiple time variables, of which there were initially 4 separate columns (month, month name, period, and year), into a single date variable. I also removed the extraneous index variable, as R numbers the rows already, making the additional variable unnecessary. 
+
+```{r echo = FALSE}
+subset <- select(spending, one_of(c("year_month")), contains("annual.combined")) #besides the date, select only annual combined variables
+subset <- select(subset, contains("commercial"),contains("educational"), contains("highway"), contains("office"), contains("transportation"), one_of(c("year_month"))) #besides date and total spending, select only my 5 selected variables
+uni <- select(subset, contains("commercial"),contains("educational"), contains("highway"), contains("office"), contains("transportation")) #just the 5 variables for univariate analysis
+```
+
+After cleaning up the dataset, I made 2 different subsets, one containing only the 5 variables for univariate analysis, and one subset with those variables along with the date.
+
+## **3. Variable Descriptions**
+
+Variable | Type | Variable Description
+---|---|---
+Commercial | Numeric | Annual Combined Spending on Construction in the Commercial Sector
+Educational | Numeric | Annual Combined Spending on Construction in the Education Sector
+Highway and Street | Numeric | Annual Combined Spending on Construction of Highways and Streets
+Office | Numeric | Annual Combined Spending on Construction of Office Buildings
+Transportation | Numeric | Annual Combined Spending on Construction in the Transport Sector
+Year | Date | Year and month in which the data was collected
+
+## **4. Univariate Analyses**
+
+```{r echo=FALSE} 
+histogram <- function(input, string = "Variable"){
+  ggplot() + geom_histogram(aes(x=input), bins = 20, fill = "#8c96c6", col = "#8856a7") + ylab("Frequency") + xlab(string) + ggtitle(paste("Distribution of Annual Combined", string))
+}
+
+columns <- names(uni)
+for(column in columns){
+  graph <- histogram(column)
+  #print(graph)
+} #doesnt work but the attempt is there
+```
+
+```{r echo = FALSE}
+histogram(uni$annual.combined.commercial, "Commercial Construction Spending (USD)")
+```
+
+The distribution of Commercial Construction Spending (USD) is relatively unimodal and somewhat symmetric, with a mean of `r round(mean(uni$annual.combined.commercial))` and a standard deviation of `r round(sd(uni$annual.combined.commercial))`.
+
+```{r echo=FALSE}
+histogram(uni$annual.combined.educational, "Educational Construction Spending (USD)")
+```
+
+The distribution of Educational Construction Spending (USD) is unimodal and right skewed, with a mean of `r round(median(uni$annual.combined.educational))` and an interquartile range of `r round(IQR(uni$annual.combined.educational))`
+
+```{r echo=FALSE}
+histogram(uni$annual.combined.highway.and.street, "Highway and Street Construction Spending (USD)")
+```
+
+The distribution of Highway and Street Construction Spending (USD) is relatively unimodal and somewhat symmetric, with a mean of `r round(mean(uni$annual.combined.highway.and.street))` and a standard deviation of `r round(sd(uni$annual.combined.highway.and.street))`.
+
+```{r echo=FALSE}
+histogram(uni$annual.combined.office, "Office Construction Spending (USD)")
+```
+
+The distribution of Office Construction Spending (USD) is relatively unimodal and right skew, with a mean of `r round(median(uni$annual.combined.office))` and a standard deviation of `r round(IQR(uni$annual.combined.office))`.
+
+```{r echo=FALSE}
+histogram(uni$annual.combined.transportation, "Transportation Construction Spending (USD)")
+```
+
+The distribution of Transportation Construction Spending (USD) is bimodal with a mode of `r mode(uni$annual.combined.transportation)`.
+
+## **5. Multivariate Analyses**
+
+```{r echo=FALSE}
+scatterplot <- function(input, string = "Variable", b = 0){
+  if(b==0){
+    ggplot() + geom_point(aes(x=subset$year_month, y=input), col = "#b3cde3") + ylab(string) + xlab("Year") + ggtitle(paste("Distribution of Year and Annual Combined", string))} #choose ggplot or base r
+  else if(b==1){
+    plot(input)}
+}
+```
+
+```{r echo=FALSE}
+scatterplot(subset$annual.combined.commercial, "Commercial Construction Spending (USD)")
+subset$date_numeric <- as.numeric(subset$year_month)
+```
+
+The correlation coefficient between Year and Commercial Construction Spending is `r round(cor(subset$date_numeric, subset$annual.combined.commercial),3)`, indicative of a weak negative correlation, meaning that Commercial Construction Spending had a very slight tendency to decrease with time.
+
+```{r echo = FALSE}
+scatterplot(subset$annual.combined.educational, "Educational Construction Spending (USD)")
+```
+
+The correlation coefficient between Year and Educational Construction Spending is `r round(cor(subset$date_numeric, subset$annual.combined.education),3)`, indicative of a weak positive correlation, meaning that Educational Construction Spending had a slight tendency to increase with time.
+
+```{r echo = FALSE}
+scatterplot(subset$annual.combined.highway.and.street, "Highway and Street Construction Spending (USD)")
+```
+
+The correlation coefficient between Year and Highway & Street Construction Spending is `r round(cor(subset$date_numeric, subset$annual.combined.highway.and.street),3)`, indicative of a strong positive correlation, meaning that Highway and Street Construction Spending has a strong tendency to increase with time.
+
+```{r echo = FALSE}
+scatterplot(subset$annual.combined.office, "Office Construction Spending (USD)")
+```
+
+The correlation coefficient between Year and Office Construction Spending is `r round(cor(subset$date_numeric, subset$annual.combined.office),3)`, indicative of a weak negative correlation, meaning that Office Construction Spending has a slight tendency to decrease with time.
+
+```{r echo = FALSE}
+scatterplot(subset$annual.combined.transportation, "Transportation Construction Spending (USD)")
+```
+
+The correlation coefficient between Year and Transportation Construction Spending is `r round(cor(subset$date_numeric, subset$annual.combined.transportation),3)`, indicative of a strong positive correlation, meaning that Transportation Construction Spending has a strong tendency to increase with time.
+
+## **6. Reproducibility Resources**
+
+[Project 2 Repository](https://github.com/gracenguyn/SDS313-Project2.git)
+
+## **7. Choice Elements**
+
+In preparing my data, I reshaped (B) and combined various alphanumeric date variables into a single variable, which I then parsed as a date (E). In preparing for multivariate analysis, I created a new variable from my date variable which converted the date vector to numeric so that I could run quantitative analysis. To construct all of my graphs, I created 2 separate functions (J), one for univariate and one for bivariate graphs, which both include an optional argument to create a plot using base r rather than the function default ggplot. I utilized if-statements to include this functionality (I). I also attempted to use a for-loop to loop through my variable calls to the function (H).
+
+## **8. References**
+
+[Construction Spending Dataset](https://corgis-edu.github.io/corgis/csv/construction_spending/)
+
+[CORGIS Dataset Project](https://corgis-edu.github.io/corgis/)
+
+[Image Courtesy of the Blanton Museum of Art](https://blantonmuseum.org/about-the-project/construction-updates/)
